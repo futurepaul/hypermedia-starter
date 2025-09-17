@@ -1,0 +1,19 @@
+{
+  "name": "hypermedia-starter",
+  "module": "index.tsx",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "PORT=4420 bun --hot index.tsx"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@kitajs/html": "^4.2.10",
+    "@kitajs/ts-html-plugin": "^4.1.3"
+  }
+}
