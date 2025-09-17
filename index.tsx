@@ -60,16 +60,71 @@ function escapeHtml(s: any) {
   return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
+function escapeAttr(s: any) {
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+const IMG_EXT = new Set(["png", "jpg", "jpeg", "gif", "webp", "avif"]);
+const VID_EXT = new Set(["mp4", "webm", "mov", "m4v", "ogg"]);
+
+function sanitizeUrl(raw: string): string | null {
+  try {
+    let u = raw.trim();
+    // strip common trailing punctuation
+    while (/[,)!?;:'\]\"]$/.test(u)) u = u.slice(0, -1);
+    const url = new URL(u);
+    if (url.protocol === "http:" || url.protocol === "https:") return url.toString();
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function renderContentWithMedia(content: string): string {
+  const re = /https?:\/\/[^\s<>\"]+/g;
+  let out = "";
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(content))) {
+    const start = m.index;
+    const end = re.lastIndex;
+    const urlRaw = m[0];
+    out += escapeHtml(content.slice(last, start));
+    last = end;
+    const safeUrl = sanitizeUrl(urlRaw);
+    if (!safeUrl) {
+      out += escapeHtml(urlRaw);
+      continue;
+    }
+    const pathname = (() => { try { return new URL(safeUrl).pathname; } catch { return safeUrl; } })();
+    const ext = pathname.split(".").pop()?.toLowerCase() || "";
+    if (IMG_EXT.has(ext)) {
+      out += `<a href="${escapeAttr(safeUrl)}" target="_blank" rel="noopener"><img src="${escapeAttr(safeUrl)}" alt="image" style="max-width:100%;height:auto;border-radius:.25rem"/></a>`;
+    } else if (VID_EXT.has(ext)) {
+      out += `<video controls preload="metadata" style="max-width:100%;border-radius:.25rem"><source src="${escapeAttr(safeUrl)}"/></video>`;
+    } else {
+      out += `<a href="${escapeAttr(safeUrl)}" target="_blank" rel="noopener">${escapeHtml(urlRaw)}</a>`;
+    }
+  }
+  out += escapeHtml(content.slice(last));
+  return out;
+}
+
 function noteHtml(note: NostrEvent, profile?: any) {
   const id = note.id;
   const name = getDisplayName(profile) || note.pubkey.slice(0, 12);
   const avatar = getProfilePicture(profile, `https://robohash.org/${note.pubkey}.png`);
-  const content = escapeHtml(note.content ?? "");
+  const content = renderContentWithMedia(note.content ?? "");
   return (
     `<div id="note-${id}" class="nostr-note" style="margin:.5rem 0">` +
     `<div class="note-card" style="border:1px solid #e5e7eb;border-radius:.5rem;box-shadow:0 1px 2px rgba(0,0,0,.05);">` +
     `<div id="note-${id}-header" style="display:flex;gap:.75rem;align-items:center;padding:.75rem .75rem 0 .75rem;">` +
-    `<img src="${avatar}" alt="Profile" style="width:2.5rem;height:2.5rem;border-radius:9999px;object-fit:cover;"/>` +
+    `<img src="${escapeAttr(avatar)}" alt="Profile" style="width:2.5rem;height:2.5rem;border-radius:9999px;object-fit:cover;"/>` +
     `<strong>${escapeHtml(name)}</strong>` +
     `</div>` +
     `<div style="padding:.5rem .75rem 1rem .75rem;white-space:pre-wrap;">${content}</div>` +
