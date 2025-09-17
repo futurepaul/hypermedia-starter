@@ -14,6 +14,14 @@ It demonstrates the core hypermedia loop with a simple counter and a live event 
 
 Use this as a tutorial and baseline to build upon.
 
+**References**
+- [Hypertext (Wikipedia)](https://en.wikipedia.org/wiki/Hypertext)
+- [HATEOAS (Wikipedia)](https://en.wikipedia.org/wiki/HATEOAS)
+- [Hypermedia Systems](https://hypermedia.systems/)
+- [DataStar](https://data-star.dev/)
+- [htmx](https://htmx.org/)
+- [Fixi (GitHub)](https://github.com/bigskysoftware/fixi)
+
 **Why Hypermedia?**
 - Server renders HTML. Client stays “dumb”, only handling fetch + swap.
 - State and logic live server-side. No client framework needed.
