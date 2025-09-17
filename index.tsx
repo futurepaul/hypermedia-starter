@@ -104,7 +104,7 @@ function renderContentWithMedia(content: string): string {
     const pathname = (() => { try { return new URL(safeUrl).pathname; } catch { return safeUrl; } })();
     const ext = pathname.split(".").pop()?.toLowerCase() || "";
     if (IMG_EXT.has(ext)) {
-      out += `<a href="${escapeAttr(safeUrl)}" target="_blank" rel="noopener"><img src="${escapeAttr(safeUrl)}" alt="image" style="max-width:100%;height:auto;border-radius:.25rem"/></a>`;
+      out += `<a href="${escapeAttr(safeUrl)}" target="_blank" rel="noopener"><img src="${escapeAttr(safeUrl)}" alt="image" loading="lazy" style="max-width:100%;height:auto;border-radius:.25rem"/></a>`;
     } else if (VID_EXT.has(ext)) {
       out += `<video controls preload="metadata" style="max-width:100%;border-radius:.25rem"><source src="${escapeAttr(safeUrl)}"/></video>`;
     } else {
@@ -124,7 +124,7 @@ function noteHtml(note: NostrEvent, profile?: any) {
     `<div id="note-${id}" class="nostr-note" style="margin:.5rem 0">` +
     `<div class="note-card" style="border:1px solid #e5e7eb;border-radius:.5rem;box-shadow:0 1px 2px rgba(0,0,0,.05);">` +
     `<div id="note-${id}-header" style="display:flex;gap:.75rem;align-items:center;padding:.75rem .75rem 0 .75rem;">` +
-    `<img src="${escapeAttr(avatar)}" alt="Profile" style="width:2.5rem;height:2.5rem;border-radius:9999px;object-fit:cover;"/>` +
+    `<img src="${escapeAttr(avatar)}" alt="Profile" loading="lazy" style="width:2.5rem;height:2.5rem;border-radius:9999px;object-fit:cover;"/>` +
     `<strong>${escapeHtml(name)}</strong>` +
     `</div>` +
     `<div style="padding:.5rem .75rem 1rem .75rem;white-space:pre-wrap;">${content}</div>` +
