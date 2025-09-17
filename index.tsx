@@ -87,9 +87,33 @@ function startNostr(relayUrl: string) {
   nostrProfileSubs.clear();
 
   log("Nostr connect ->", relayUrl);
+  // Prime SSR cache with recent history (do NOT broadcast to clients)
+  try {
+    const backfill: NostrEvent[] = [] as any;
+    const req = nostrPool
+      .relay(relayUrl)
+      .request({ kinds: [1], limit: NOSTR_MAX_WINDOW });
+    req.subscribe({
+      next: (evt) => backfill.push(evt as NostrEvent),
+      error: (err) => log("nostr backfill error", err),
+      complete: () => {
+        // Sort newest-first and store up to window
+        backfill.sort((a, b) => (b.created_at ?? 0) - (a.created_at ?? 0));
+        nostrNotes.length = 0;
+        for (const n of backfill.slice(0, NOSTR_MAX_WINDOW)) {
+          nostrNotes.push({ id: n.id, html: noteHtml(n, undefined) });
+        }
+        log("nostr backfill cached:", nostrNotes.length);
+      },
+    });
+  } catch (e) {
+    log("nostr backfill failed", e);
+  }
+
+  const since = Math.floor(Date.now() / 1000);
   const source = nostrPool
     .relay(relayUrl)
-    .subscription({ kinds: [1] })
+    .subscription({ kinds: [1], since })
     .pipe(
       // Only events (ignore EOSE)
       onlyEvents(),
