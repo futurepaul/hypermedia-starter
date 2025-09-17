@@ -53,6 +53,7 @@ nostrEventStore.replaceableLoader = nostrAddressLoader;
 
 let nostrSubCleanup: null | (() => void) = null;
 const nostrProfileSubs = new Map<string, any>();
+const nostrNotes: Array<{ id: string; html: string }> = [];
 
 function escapeHtml(s: any) {
   return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
@@ -100,12 +101,17 @@ function startNostr(relayUrl: string) {
       // Render with whatever profile we have right now
       const user = { pubkey: note.pubkey, relays: mergeRelaySets(getSeenRelays(note)) } as any;
       const htmlText = noteHtml(note, undefined);
-      broadcastNostr({ target: "#nostr-timeline", swap: "beforeend", text: htmlText });
+      broadcastNostr({ target: "#nostr-timeline", swap: "afterbegin", text: htmlText });
+      // Cache newest-first for SSR
+      nostrNotes.unshift({ id: note.id, html: htmlText });
+      if (nostrNotes.length > 200) nostrNotes.length = 200;
       // Then subscribe to profile to upgrade header when it arrives
       const prof$ = nostrEventStore.profile(user);
       const profSub = prof$.subscribe((profile) => {
         const updated = noteHtml(note, profile);
         broadcastNostr({ target: `#note-${note.id}`, swap: "outerHTML", text: updated });
+        const idx = nostrNotes.findIndex((n) => n.id === note.id);
+        if (idx >= 0) nostrNotes[idx] = { id: note.id, html: updated };
       });
       nostrProfileSubs.set(note.id, profSub);
     },
@@ -143,9 +149,10 @@ Bun.serve({
     "/nostr": async (req) => {
       const url = new URL(req.url);
       log(req.method, url.pathname + url.search);
+      const initial = nostrNotes.slice(0, 10).map((n) => n.html);
       return html(
         <Layout title="Nostr Timeline">
-          <NostrTimeline relay={nostrRelay} />
+          <NostrTimeline relay={nostrRelay} initial={initial} />
         </Layout>
       );
     },

@@ -63,8 +63,8 @@ export function EventLog({ events }: { events: Array<{ id: number; text: string 
   );
 }
 
-export function NostrTimeline(props: { relay: string }) {
-  const { relay } = props;
+export function NostrTimeline(props: { relay: string; initial: string[] }) {
+  const { relay, initial } = props;
   return (
     <section style={{ marginTop: '2rem' }}>
       <h1>Nostr Timeline</h1>
@@ -88,8 +88,10 @@ export function NostrTimeline(props: { relay: string }) {
         </form>
       </div>
       {/* Declarative autostart SSE stream for notes */}
-      <div ext-fx-sse-autostart="/nostr/events" data-target="#nostr-timeline" data-swap="beforeend" />
-      <div id="nostr-timeline"></div>
+      <div ext-fx-sse-autostart="/nostr/events" data-target="#nostr-timeline" data-swap="afterbegin" />
+      <div id="nostr-timeline">
+        {initial.map((h) => h)}
+      </div>
     </section>
   );
 }
