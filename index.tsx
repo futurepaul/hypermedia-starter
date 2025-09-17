@@ -54,6 +54,7 @@ nostrEventStore.replaceableLoader = nostrAddressLoader;
 let nostrSubCleanup: null | (() => void) = null;
 const nostrProfileSubs = new Map<string, any>();
 const nostrNotes: Array<{ id: string; html: string }> = [];
+const NOSTR_MAX_WINDOW = 20;
 
 function escapeHtml(s: any) {
   return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
@@ -102,16 +103,32 @@ function startNostr(relayUrl: string) {
       const user = { pubkey: note.pubkey, relays: mergeRelaySets(getSeenRelays(note)) } as any;
       const htmlText = noteHtml(note, undefined);
       broadcastNostr({ target: "#nostr-timeline", swap: "afterbegin", text: htmlText });
-      // Cache newest-first for SSR
+      // Cache newest-first and enforce max window
       nostrNotes.unshift({ id: note.id, html: htmlText });
-      if (nostrNotes.length > 200) nostrNotes.length = 200;
+      if (nostrNotes.length > NOSTR_MAX_WINDOW) {
+        const removed = nostrNotes.splice(NOSTR_MAX_WINDOW);
+        for (const r of removed) {
+          // Remove trimmed notes from clients and cleanup subs
+          broadcastNostr({ target: `#note-${r.id}`, swap: "outerHTML", text: "" });
+          const sub = nostrProfileSubs.get(r.id);
+          try { sub?.unsubscribe?.(); } catch {}
+          nostrProfileSubs.delete(r.id);
+        }
+      }
       // Then subscribe to profile to upgrade header when it arrives
       const prof$ = nostrEventStore.profile(user);
       const profSub = prof$.subscribe((profile) => {
-        const updated = noteHtml(note, profile);
-        broadcastNostr({ target: `#note-${note.id}`, swap: "outerHTML", text: updated });
+        // Only update if note still within window
         const idx = nostrNotes.findIndex((n) => n.id === note.id);
-        if (idx >= 0) nostrNotes[idx] = { id: note.id, html: updated };
+        if (idx >= 0) {
+          const updated = noteHtml(note, profile);
+          broadcastNostr({ target: `#note-${note.id}`, swap: "outerHTML", text: updated });
+          nostrNotes[idx] = { id: note.id, html: updated };
+        } else {
+          // No longer visible; drop subscription
+          try { nostrProfileSubs.get(note.id)?.unsubscribe?.(); } catch {}
+          nostrProfileSubs.delete(note.id);
+        }
       });
       nostrProfileSubs.set(note.id, profSub);
     },
@@ -169,6 +186,12 @@ Bun.serve({
           startNostr(nostrRelay);
           // Clear current timeline for connected clients
           broadcastNostr({ target: "#nostr-timeline", swap: "innerHTML", text: "" });
+          // Reset server cache and subscriptions
+          nostrNotes.length = 0;
+          for (const [, sub] of nostrProfileSubs) {
+            try { sub.unsubscribe?.(); } catch {}
+          }
+          nostrProfileSubs.clear();
         }
         if (isFixi) {
           return fragment(
