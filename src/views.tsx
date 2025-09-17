@@ -62,3 +62,34 @@ export function EventLog({ events }: { events: Array<{ id: number; text: string 
     </section>
   );
 }
+
+export function NostrTimeline(props: { relay: string }) {
+  const { relay } = props;
+  return (
+    <section style={{ marginTop: '2rem' }}>
+      <h1>Nostr Timeline</h1>
+      <p>
+        Server-driven timeline powered by <code>applesauce</code>, streamed as HTML over SSE.
+      </p>
+      <div id="nostr-status" style={{ display: 'flex', gap: '.5rem', alignItems: 'center', margin: '.5rem 0 1rem' }}>
+        <form
+          fx-action="/nostr/relay"
+          fx-method="post"
+          fx-target="#nostr-status"
+          fx-swap="outerHTML"
+          action="/nostr/relay"
+          method="post"
+          style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}
+        >
+          <label htmlFor="nostr-relay">Relay:</label>
+          <input id="nostr-relay" name="relay" size={40} value={relay} />
+          <button type="submit">Set</button>
+          <span style={{ opacity: .7 }}>(shared)</span>
+        </form>
+      </div>
+      {/* Declarative autostart SSE stream for notes */}
+      <div ext-fx-sse-autostart="/nostr/events" data-target="#nostr-timeline" data-swap="beforeend" />
+      <div id="nostr-timeline"></div>
+    </section>
+  );
+}
